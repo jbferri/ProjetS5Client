@@ -1,7 +1,9 @@
 package com.example.boattracker;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import org.apache.http.NameValuePair;
@@ -11,6 +13,9 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+
+
+
 
 
 import android.app.Activity;
@@ -37,6 +42,9 @@ public class MainActivity extends Activity implements  LocationListener {
 	String lon = null;
 	RadioGroup radio = null;
 	String type = null;
+	
+	SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
+	String date = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +57,7 @@ public class MainActivity extends Activity implements  LocationListener {
 		radio = (RadioGroup) findViewById(R.id.choixType);
 		objgps = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 		
-		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,1, this);
+		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,2000,1, this);
 	}
 
 	private void determinerType(){
@@ -67,6 +75,10 @@ public class MainActivity extends Activity implements  LocationListener {
 		longitude.setText(lon);
 	}
 	
+	private void recupererDate() {
+		date = df.format(Calendar.getInstance().getTime());
+	}
+	
 	
 	@Override
 	public void onLocationChanged(Location location) {
@@ -74,6 +86,7 @@ public class MainActivity extends Activity implements  LocationListener {
 		this.loc = location;
 		afficherLocation();
 		determinerType();
+		recupererDate();
 		if (text.getText().toString().length() > 0){
 			Log.i("BoatTracker", "j'ai rentré du texte");
 			EnvoiRequete rqt = new EnvoiRequete();
@@ -115,8 +128,9 @@ public class MainActivity extends Activity implements  LocationListener {
 		public void envoyerMessage(String name) {
 			
 			HttpClient client = new DefaultHttpClient();
-			//HttpPost post = new HttpPost("http://10.29.229.220/GSCtuto/reception4.php");
-			HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
+			HttpPost post = new HttpPost("http://10.29.230.192/GSCtuto/reception4.php");
+			//HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
+			//HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
 
 			
 			try {
@@ -125,6 +139,7 @@ public class MainActivity extends Activity implements  LocationListener {
 				donnees.add(new BasicNameValuePair("nom", name));
 				donnees.add(new BasicNameValuePair("latitude", lat));
 				donnees.add(new BasicNameValuePair("longitude", lon));
+				donnees.add(new BasicNameValuePair("heure", date));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
 				text.setKeyListener(null);
