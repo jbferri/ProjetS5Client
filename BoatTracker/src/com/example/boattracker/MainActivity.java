@@ -15,6 +15,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -42,6 +43,8 @@ public class MainActivity extends Activity implements  LocationListener {
 	RadioGroup radio = null;
 	String type = null;
 	int niveauBat;
+	String batterie = null;
+	private BroadcastReceiver batteryReceiver;
 	
 	SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
 	String date = null;
@@ -60,9 +63,19 @@ public class MainActivity extends Activity implements  LocationListener {
 		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,2000,1, this);
 	}
 	
-	protected void onReceive(Context arg0, Intent intent) {
-      niveauBat = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
-    }
+	
+	private BroadcastReceiver batteryLevelReceiver() {
+		return new BroadcastReceiver(){
+
+			@Override
+			public void onReceive(Context context, Intent intent) {
+			      niveauBat = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
+				
+			}
+			
+		};
+		
+	}
 
 	private void determinerType(){
 		if (radio.getCheckedRadioButtonId() == R.id.radio2){
@@ -84,7 +97,8 @@ public class MainActivity extends Activity implements  LocationListener {
 	}
 	
 	private void recupererNiveauBatterie() {
-		//niveauBat = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
+		this.batteryReceiver = batteryLevelReceiver();
+		batterie = String.valueOf(niveauBat);
 	}
 
 	
@@ -137,7 +151,7 @@ public class MainActivity extends Activity implements  LocationListener {
 		public void envoyerMessage(String name) {
 			
 			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost("http://10.29.230.192/GSCtuto/reception4.php");
+			HttpPost post = new HttpPost("http://172.22.204.173/GSCtuto/reception4.php");
 			//HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
 			//HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
 
@@ -149,6 +163,7 @@ public class MainActivity extends Activity implements  LocationListener {
 				donnees.add(new BasicNameValuePair("latitude", lat));
 				donnees.add(new BasicNameValuePair("longitude", lon));
 				donnees.add(new BasicNameValuePair("heure", date));
+				donnees.add(new BasicNameValuePair("batterie", batterie));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
 				text.setKeyListener(null);
