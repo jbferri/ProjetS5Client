@@ -14,16 +14,15 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
-
-
-
-
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.EditText;
@@ -42,6 +41,7 @@ public class MainActivity extends Activity implements  LocationListener {
 	String lon = null;
 	RadioGroup radio = null;
 	String type = null;
+	int niveauBat;
 	
 	SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
 	String date = null;
@@ -59,6 +59,10 @@ public class MainActivity extends Activity implements  LocationListener {
 		
 		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,2000,1, this);
 	}
+	
+	protected void onReceive(Context arg0, Intent intent) {
+      niveauBat = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
+    }
 
 	private void determinerType(){
 		if (radio.getCheckedRadioButtonId() == R.id.radio2){
@@ -79,6 +83,10 @@ public class MainActivity extends Activity implements  LocationListener {
 		date = df.format(Calendar.getInstance().getTime());
 	}
 	
+	private void recupererNiveauBatterie() {
+		//niveauBat = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
+	}
+
 	
 	@Override
 	public void onLocationChanged(Location location) {
@@ -87,6 +95,7 @@ public class MainActivity extends Activity implements  LocationListener {
 		afficherLocation();
 		determinerType();
 		recupererDate();
+		recupererNiveauBatterie();
 		if (text.getText().toString().length() > 0){
 			Log.i("BoatTracker", "j'ai rentré du texte");
 			EnvoiRequete rqt = new EnvoiRequete();
