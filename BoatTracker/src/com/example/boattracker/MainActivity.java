@@ -15,7 +15,6 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -34,17 +33,20 @@ import android.widget.TextView;
 public class MainActivity extends Activity implements  LocationListener {
 
 	EditText text = null;
-	LocationManager objgps = null;;
-	Location loc = null;
+	RadioGroup radio = null;
 	TextView latitude = null;
 	TextView longitude = null;
+	
+	String identifiant = null;
 	String lat = null;
 	String lon = null;
-	RadioGroup radio = null;
 	String type = null;
-	int niveauBat;
 	String batterie = null;
-	private BroadcastReceiver batteryReceiver;
+
+	LocationManager objgps = null;;
+	Location loc = null;
+	
+	Intent batteryStatus;
 	
 	SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
 	String date = null;
@@ -61,21 +63,12 @@ public class MainActivity extends Activity implements  LocationListener {
 		objgps = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 		
 		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,2000,1, this);
-	}
-	
-	
-	private BroadcastReceiver batteryLevelReceiver() {
-		return new BroadcastReceiver(){
-
-			@Override
-			public void onReceive(Context context, Intent intent) {
-			      niveauBat = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
-				
-			}
-			
-		};
 		
+		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+		batteryStatus = registerReceiver(null, ifilter);
 	}
+	
+	
 
 	private void determinerType(){
 		if (radio.getCheckedRadioButtonId() == R.id.radio2){
@@ -96,8 +89,14 @@ public class MainActivity extends Activity implements  LocationListener {
 		date = df.format(Calendar.getInstance().getTime());
 	}
 	
+	private void recupererIdentifiant(){
+		identifiant = text.getText().toString();
+	}
+	
 	private void recupererNiveauBatterie() {
-		this.batteryReceiver = batteryLevelReceiver();
+		int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+		int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+		float niveauBat = level / (float)scale * 100.0f;
 		batterie = String.valueOf(niveauBat);
 	}
 
@@ -107,13 +106,15 @@ public class MainActivity extends Activity implements  LocationListener {
 		Log.i("BoatTracker", "La position a changé.");
 		this.loc = location;
 		afficherLocation();
+		recupererIdentifiant();
 		determinerType();
 		recupererDate();
 		recupererNiveauBatterie();
-		if (text.getText().toString().length() > 0){
+		Log.i("BoatTracker", "niveau de batterie:" + batterie);
+		if (identifiant.length() > 0){
 			Log.i("BoatTracker", "j'ai rentré du texte");
 			EnvoiRequete rqt = new EnvoiRequete();
-			rqt.execute(text.getText().toString());
+			rqt.execute();
 		}
 		
 	}
@@ -144,14 +145,14 @@ public class MainActivity extends Activity implements  LocationListener {
 
 		@Override
 		protected Double doInBackground(String... params) {
-				envoyerMessage(params[0]);
+				envoyerMessage();
 			return null;
 		}
 
-		public void envoyerMessage(String name) {
+		public void envoyerMessage() {
 			
 			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost("http://172.22.204.173/GSCtuto/reception4.php");
+			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/reception4.php");
 			//HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
 			//HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
 
@@ -159,7 +160,7 @@ public class MainActivity extends Activity implements  LocationListener {
 			try {
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("type", type));
-				donnees.add(new BasicNameValuePair("nom", name));
+				donnees.add(new BasicNameValuePair("nom", identifiant));
 				donnees.add(new BasicNameValuePair("latitude", lat));
 				donnees.add(new BasicNameValuePair("longitude", lon));
 				donnees.add(new BasicNameValuePair("heure", date));
