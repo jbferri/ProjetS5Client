@@ -59,7 +59,7 @@ public class MainActivity extends Activity implements  LocationListener {
 	int frequence;
 	String freq;
 	
-	SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
+	SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	String date = null;
 
 	@Override
@@ -115,7 +115,8 @@ public class MainActivity extends Activity implements  LocationListener {
 
 	private void changerFrequence(){
 		if (freq != null){
-			frequence = Integer.valueOf(freq);
+			Log.i("BoatTracker", "youhou!");
+			//frequence = Integer.valueOf(freq);
 			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence,1, this);
 		}
 	}
@@ -225,9 +226,9 @@ public class MainActivity extends Activity implements  LocationListener {
 				Log.e("log_tag", "Error in http connection " + e.toString());
 			}
 			
-			// Convertion de la requête en string
+			// Conversion de la requête en string
 			try{
-				BufferedReader reader = new BufferedReader(new InputStreamReader(is,"iso-8859-1"),8);
+				BufferedReader reader = new BufferedReader(new InputStreamReader(is,"utf8"));
 				StringBuilder sb = new StringBuilder();
 				String line = null;
 				while ((line = reader.readLine()) != null) {
@@ -238,6 +239,7 @@ public class MainActivity extends Activity implements  LocationListener {
 				}catch(Exception e){
 					Log.e("log_tag", "Error converting result " + e.toString());
 				}
+			Log.i("BoatTracker", "result :" + result);
 			
 			// Parse les données JSON
 			try{
@@ -252,6 +254,7 @@ public class MainActivity extends Activity implements  LocationListener {
 			}catch(JSONException e){
 				Log.e("log_tag", "Error parsing data " + e.toString());
 			}
+			Log.i("BoatTracker", "freq : " + result);
 		}
 	}
 	
