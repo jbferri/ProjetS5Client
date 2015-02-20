@@ -117,9 +117,12 @@ public class MainActivity extends Activity implements  LocationListener {
 		if (freq != null){
 			Log.i("BoatTracker", "youhou!");
 			//frequence = Integer.valueOf(freq);
+			Log.i("BoatTracker", "frequence:" + freq);
+			freq = null;
 			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence,1, this);
 		}
 	}
+	
 	@Override
 	public void onLocationChanged(Location location) {
 		this.loc = location;
@@ -131,7 +134,6 @@ public class MainActivity extends Activity implements  LocationListener {
 		recupererNiveauBatterie();
 		changerFrequence();
 		
-		Log.i("BoatTracker", "frequence:" + freq);
 		if (identifiant.length() > 0){
 			EnvoiRequete Rqt = new EnvoiRequete();
 			RecupererInstructions Rqtt = new RecupererInstructions();
@@ -241,20 +243,20 @@ public class MainActivity extends Activity implements  LocationListener {
 				}
 			Log.i("BoatTracker", "result :" + result);
 			
+			//freq = result.substring(22, result.length()-3);
+			
+			
+			/*
 			// Parse les données JSON
 			try{
 				JSONArray jArray = new JSONArray(result);
 				for(int i=0;i<jArray.length();i++){
 					JSONObject json_data = jArray.getJSONObject(i);
-					// Affichage Frequence
-					Log.i("log_tag","freq: "+json_data.getString("FrequenceEmission"));
-					// Résultats de la requête
-					freq += jArray.getJSONObject(i); 
+					freq += json_data.getString("FrequenceEmission");
 				}
 			}catch(JSONException e){
 				Log.e("log_tag", "Error parsing data " + e.toString());
-			}
-			Log.i("BoatTracker", "freq : " + result);
+			}*/
 		}
 	}
 	
