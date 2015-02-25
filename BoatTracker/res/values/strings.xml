@@ -16,6 +16,12 @@
     <string name="bouee">Bouée</string>
     <string name="nom">Nom \:</string>
     <string name="defaultEditText">Nom</string>
+    <string name="active">Activée!</string>
+    <string name="desactive">Désactivée</string>
+    <string name="emissionSonore">Emission Sonore \:</string>
+    <string name="emissionGPS">Emission GPS \:</string>
+    <string name="freqEmi">Fréquence d\'émission \:</string>
+    <string name="defaultFreq">--</string>
     
     	
 </resources>

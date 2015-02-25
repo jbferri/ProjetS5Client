@@ -18,9 +18,6 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.Context;
@@ -38,30 +35,49 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 
-public class MainActivity extends Activity implements  LocationListener {
+public class MainActivity extends Activity implements LocationListener {
 
+	// Variables utilisées pour les widgets (aspect graphique de l'application)
 	EditText text = null;
 	RadioGroup radio = null;
 	TextView latitude = null;
 	TextView longitude = null;
+	TextView emissionGPS = null;
+	TextView frequenceEmission = null;
 	
+	/* Variables utilisées pour stocker les valeurs qui vont être envoyées
+	 * sur le serveur via une requête HTTP. (uniquement des String)
+	 */
 	String identifiant = null;
 	String lat = null;
 	String lon = null;
 	String type = null;
 	String batterie = null;
+	String date = null;
 
+	// Variables utilisées pour la gestion du GPS
 	LocationManager objgps = null;;
 	Location loc = null;
 	
+	// Variable utilisée pour l'obtention du niveau de batterie
 	Intent batteryStatus = null;
 	
+	/* Variables utilisées pour redéfinir la fréquence d'émission du GPS
+	 * après modification de sa valeur au niveau du serveur 
+	 */
 	int frequence;
 	String freq;
+	String activationEmission;
 	
+	// Variable utilisée pour le format de la date
 	SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	String date = null;
 
+	
+	
+	
+	
+	
+	// Méthode appelée au lancement de l'application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -72,15 +88,20 @@ public class MainActivity extends Activity implements  LocationListener {
 		latitude = (TextView) findViewById(R.id.textView3);
 		longitude = (TextView) findViewById(R.id.textView5);
 		radio = (RadioGroup) findViewById(R.id.choixType);
+		emissionGPS = (TextView) findViewById(R.id.textView10);
+		frequenceEmission = (TextView) findViewById(R.id.textView12);
 		objgps = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-		
 		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence,1, this);
-		
-		
 	}
 	
 	
-
+	/* 
+	 * Les méthodes ci dessous sont invoquées à chaque changement de position du GPS,
+	 * c'est à dire à chaque fois que la méthode onLocationChanged() est appellée
+	 * 
+	 */
+	
+	// Détermine quel type d'entité envoie les informations au serveur
 	private void determinerType(){
 		if (radio.getCheckedRadioButtonId() == R.id.radio2){
 			type = "Bouee";
@@ -89,6 +110,7 @@ public class MainActivity extends Activity implements  LocationListener {
 		}
 	}
 	
+	// Affiche les coordonnées GPS à l'écran
 	private void afficherLocation() {
 		lat = String.valueOf(loc.getLatitude());
 		lon = String.valueOf(loc.getLongitude());
@@ -96,14 +118,17 @@ public class MainActivity extends Activity implements  LocationListener {
 		longitude.setText(lon);
 	}
 	
+	// Récupère la dare et l'heure
 	private void recupererDate() {
 		date = df.format(Calendar.getInstance().getTime());
 	}
 	
+	// Récupère le nom de l'entité
 	private void recupererIdentifiant(){
 		identifiant = text.getText().toString();
 	}
 	
+	// Récupère le niveau de batterie
 	private void recupererNiveauBatterie() {
 		IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 		batteryStatus = registerReceiver(null, ifilter);
@@ -113,15 +138,27 @@ public class MainActivity extends Activity implements  LocationListener {
 		batterie = String.valueOf(niveauBat);
 	}
 
+	/* Applique le changement de fréquence d'émission 
+	 * du GPS décidé par le serveur 
+	 */
 	private void changerFrequence(){
 		if (freq != null){
 			Log.i("BoatTracker", "youhou!");
-			//frequence = Integer.valueOf(freq);
+			frequence = Integer.valueOf(freq);
+			frequenceEmission.setText(freq);
+			emissionGPS.setText("Activée");
 			Log.i("BoatTracker", "frequence:" + freq);
 			freq = null;
 			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence,1, this);
 		}
 	}
+
+
+	/* 
+	 * Redéfinition des méthodes de l'interface LocationListener. Seule 
+	 * onLocationChanged() est ici modifiée.
+	 * 
+	 */
 	
 	@Override
 	public void onLocationChanged(Location location) {
@@ -162,9 +199,15 @@ public class MainActivity extends Activity implements  LocationListener {
 		
 	}
 	
-
 	
-	// Envoi de la requête HTTP
+	
+	
+	/*
+	 * Définition d'AsyncTasks qui permettent d'envoyer des requetes HTTP
+	 * 
+	 */
+	
+	// Envoi des données au serveur
 	private class EnvoiRequete extends AsyncTask<String, Integer, Double>{
 
 		@Override
@@ -204,6 +247,7 @@ public class MainActivity extends Activity implements  LocationListener {
 
 	}
 	
+	// Récupération des informations auprès du serveur
 	private class RecupererInstructions extends AsyncTask<String, Integer, Double>{
 
 		@Override
@@ -221,6 +265,9 @@ public class MainActivity extends Activity implements  LocationListener {
 			try{
 				HttpClient httpclient = new DefaultHttpClient();
 				HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/envoi.php");
+				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
+				donnees.add(new BasicNameValuePair("nom", identifiant));
+				httppost.setEntity(new UrlEncodedFormEntity(donnees));
 				HttpResponse response = httpclient.execute(httppost);
 				HttpEntity entity = response.getEntity();
 				is = entity.getContent();
@@ -243,20 +290,13 @@ public class MainActivity extends Activity implements  LocationListener {
 				}
 			Log.i("BoatTracker", "result :" + result);
 			
-			//freq = result.substring(22, result.length()-3);
+			// Récupération des résultats de la requete
+			String[] tabReponse = result.split(";");
+			freq = tabReponse[0];
+			activationEmission = tabReponse[1];
 			
 			
-			/*
-			// Parse les données JSON
-			try{
-				JSONArray jArray = new JSONArray(result);
-				for(int i=0;i<jArray.length();i++){
-					JSONObject json_data = jArray.getJSONObject(i);
-					freq += json_data.getString("FrequenceEmission");
-				}
-			}catch(JSONException e){
-				Log.e("log_tag", "Error parsing data " + e.toString());
-			}*/
+			
 		}
 	}
 	
