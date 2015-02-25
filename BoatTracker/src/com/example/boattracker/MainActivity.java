@@ -51,6 +51,7 @@ public class MainActivity extends Activity implements LocationListener {
 	String identifiant = null;
 	String lat = null;
 	String lon = null;
+	String precision= null;
 	String type = null;
 	String batterie = null;
 	String date = null;
@@ -110,12 +111,14 @@ public class MainActivity extends Activity implements LocationListener {
 		}
 	}
 	
-	// Affiche les coordonnées GPS à l'écran
-	private void afficherLocation() {
+	// Récupère les coordonnées GPS et la précision GPS
+	private void recupererCoordGPS() {
 		lat = String.valueOf(loc.getLatitude());
 		lon = String.valueOf(loc.getLongitude());
-		latitude.setText(lat);
-		longitude.setText(lon);
+		float a = loc.getAccuracy();
+		int b = (int)a;
+		precision = String.valueOf(b);
+		Log.i("BoatTracker", "precision :" + precision);
 	}
 	
 	// Récupère la dare et l'heure
@@ -137,18 +140,20 @@ public class MainActivity extends Activity implements LocationListener {
 		float niveauBat = level / (float)scale * 100.0f;
 		batterie = String.valueOf(niveauBat);
 	}
+	
+	private void afficherInformations() {
+		latitude.setText(lat);
+		longitude.setText(lon);
+		frequenceEmission.setText(freq);
+		emissionGPS.setText("Activée");
+	}
 
 	/* Applique le changement de fréquence d'émission 
 	 * du GPS décidé par le serveur 
 	 */
 	private void changerFrequence(){
 		if (freq != null){
-			Log.i("BoatTracker", "youhou!");
 			frequence = Integer.valueOf(freq);
-			frequenceEmission.setText(freq);
-			emissionGPS.setText("Activée");
-			Log.i("BoatTracker", "frequence:" + freq);
-			freq = null;
 			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence,1, this);
 		}
 	}
@@ -164,12 +169,13 @@ public class MainActivity extends Activity implements LocationListener {
 	public void onLocationChanged(Location location) {
 		this.loc = location;
 		
-		afficherLocation();
+		recupererCoordGPS();
 		recupererIdentifiant();
 		determinerType();
 		recupererDate();
 		recupererNiveauBatterie();
 		changerFrequence();
+		afficherInformations();
 		
 		if (identifiant.length() > 0){
 			EnvoiRequete Rqt = new EnvoiRequete();
@@ -219,7 +225,7 @@ public class MainActivity extends Activity implements LocationListener {
 		public void envoyerMessage() {
 			
 			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/reception4.php");
+			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/reception5.php");
 			//HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
 			//HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
 
@@ -232,6 +238,7 @@ public class MainActivity extends Activity implements LocationListener {
 				donnees.add(new BasicNameValuePair("longitude", lon));
 				donnees.add(new BasicNameValuePair("heure", date));
 				donnees.add(new BasicNameValuePair("batterie", batterie));
+				donnees.add(new BasicNameValuePair("precision", precision));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
 				text.setKeyListener(null);
