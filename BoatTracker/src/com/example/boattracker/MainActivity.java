@@ -72,8 +72,8 @@ public class MainActivity extends Activity implements LocationListener {
 	 */
 	int frequence;
 	String freq = "--";
-	String activationEmissionGPS;
-	String activationEmissionSonore;
+	String activationEmissionGPS = "--";
+	String activationEmissionSonore = "--";
 
 	// Variable utilisée pour le format de la date
 	SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -120,7 +120,6 @@ public class MainActivity extends Activity implements LocationListener {
 		float a = loc.getAccuracy();
 		int b = (int) a;
 		precision = String.valueOf(b);
-		Log.i("BoatTracker", "precision :" + precision);
 	}
 
 	// Récupère la dare et l'heure
@@ -160,7 +159,13 @@ public class MainActivity extends Activity implements LocationListener {
 	 * récoltées sur le serveur 
 	 */
 	private void activerOuDesactiverEmissionSonore() {
-
+		if (activationEmissionSonore.equals("0")){
+			Log.i("BoatTracker", "normalement c'est desactivee!");
+			activationEmissionSonore = "Désactivée";
+		}
+		if (activationEmissionSonore.equals("1")){
+			activationEmissionSonore = "Activée";
+		}
 	}
 
 	/* 
@@ -168,7 +173,13 @@ public class MainActivity extends Activity implements LocationListener {
 	 * récoltées sur le serveur 
 	 */
 	private void activerOuDesactiverEmissionGPS() {
-
+		if (activationEmissionGPS.equals("0")){
+			activationEmissionGPS = "Désactivée";
+		}
+		if (activationEmissionGPS.equals("1")){
+			Log.i("BoatTracker", "GPS ok");
+			activationEmissionGPS = "Activée";
+		}
 	}
 
 	// Afficher les informations sur l'écran du smartphone
@@ -196,9 +207,9 @@ public class MainActivity extends Activity implements LocationListener {
 		recupererDate();
 		recupererNiveauBatterie();
 		changerFrequence();
-		afficherInformations();
 		activerOuDesactiverEmissionSonore();
 		activerOuDesactiverEmissionGPS();
+		afficherInformations();
 
 		if (nomEntite.length() > 0) {
 			EnvoiRequete Rqt = new EnvoiRequete();
@@ -244,12 +255,9 @@ public class MainActivity extends Activity implements LocationListener {
 		public void envoyerMessage() {
 
 			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost(
-					"http://172.20.10.3/GSCtuto/reception5.php");
-			// HttpPost post = new
-			// HttpPost("http://10.29.226.210:8888/cartes/reception.php");
-			// HttpPost post = new
-			// HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
+			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
+			// HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
+			// HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
 
 			try {
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
@@ -293,8 +301,7 @@ public class MainActivity extends Activity implements LocationListener {
 			// Envoi de la commande http
 			try {
 				HttpClient httpclient = new DefaultHttpClient();
-				HttpPost httppost = new HttpPost(
-						"http://172.20.10.3/GSCtuto/envoi.php");
+				HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("nom", nomEntite));
 				donnees.add(new BasicNameValuePair("id", androidId));
