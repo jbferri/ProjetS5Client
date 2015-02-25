@@ -9,7 +9,6 @@
         android:id="@+id/textView1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dip"
         android:background="#ff6347"
         android:gravity="center"
         android:padding="10dp"
@@ -128,11 +127,22 @@
             android:padding="10dp" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/textView15"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#ff6347"
+        android:gravity="center"
+        android:layout_marginTop="20dip"
+        android:padding="10dp"
+        android:text="@string/info"
+        android:textColor="#fff"
+        android:textStyle="bold" />
+    
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="20dip" >
+        android:orientation="horizontal" >
 
         <TextView
             android:id="@+id/textView9"
@@ -140,7 +150,7 @@
             android:layout_height="wrap_content"
             android:padding="10dp"
             android:text="@string/emissionGPS" />
-        
+
         <TextView
             android:id="@+id/textView10"
             android:layout_width="match_parent"
@@ -148,7 +158,27 @@
             android:padding="10dp"
             android:text="@string/desactive" />
     </LinearLayout>
-    
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+
+        <TextView
+            android:id="@+id/textView13"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="@string/emissionSonore" />
+
+        <TextView
+            android:id="@+id/textView14"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="@string/desactive" />
+    </LinearLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -160,7 +190,7 @@
             android:layout_height="wrap_content"
             android:padding="10dp"
             android:text="@string/freqEmi" />
-        
+
         <TextView
             android:id="@+id/textView12"
             android:layout_width="match_parent"

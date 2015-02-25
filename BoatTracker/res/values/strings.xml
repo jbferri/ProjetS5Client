@@ -6,6 +6,7 @@
     <string name="action_settings">Settings</string>
     <string name="coord">Coordonnées GPS</string>
 	<string name="identifiants">Identifiants</string>
+	<string name="info">Informations Terminal Android</string>
     <string name="btnEnvoyer">Go!</string>
     <string name="longitude">Longitude \:</string>
     <string name="latitude">Latitude \:</string>
@@ -20,8 +21,7 @@
     <string name="desactive">Désactivée</string>
     <string name="emissionSonore">Emission Sonore \:</string>
     <string name="emissionGPS">Emission GPS \:</string>
-    <string name="freqEmi">Fréquence d\'émission \:</string>
+    <string name="freqEmi">Période d\'émission \:</string>
     <string name="defaultFreq">--</string>
-    
-    	
+	    	
 </resources>
