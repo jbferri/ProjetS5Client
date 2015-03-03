@@ -241,7 +241,7 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	@Override
 	public void onLocationChanged(Location location) {
 		this.loc = location;
-
+		Log.i("BoatTracker", "la position a bougée");
 		recupererCoordGPS();
 		recupererIdentifiant();
 		determinerType();
@@ -312,7 +312,7 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 				donnees.add(new BasicNameValuePair("id", androidId));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
-
+				
 			} catch (ClientProtocolException e) {
 				// TODO Auto-generated catch block
 			} catch (IOException e) {
