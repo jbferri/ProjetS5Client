@@ -13,7 +13,7 @@
             android:id="@+id/textView1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#ff6347"
+            android:background="#669933"
             android:gravity="center"
             android:padding="10dp"
             android:text="@string/coord"
@@ -67,7 +67,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dip"
-            android:background="#ff6347"
+            android:background="#669933"
             android:gravity="center"
             android:padding="10dp"
             android:text="@string/identifiants"
@@ -136,7 +136,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dip"
-            android:background="#ff6347"
+            android:background="#669933"
             android:gravity="center"
             android:padding="10dp"
             android:text="@string/info"
@@ -202,6 +202,17 @@
                 android:padding="10dp"
                 android:text="@string/defaultFreq" />
         </LinearLayout>
+
+        <Button
+            android:id="@+id/btnEnvoyer"
+            android:layout_width="175dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="10dip"
+            android:layout_marginBottom="20dip"
+            android:background="#669933"
+            android:text="@string/btnEnvoyer"
+            android:textColor="#fff" />
     </LinearLayout>
 
 </ScrollView>

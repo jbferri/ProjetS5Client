@@ -19,6 +19,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -29,13 +30,16 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.provider.Settings.Secure;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
-public class MainActivity extends Activity implements LocationListener {
+public class MainActivity extends Activity implements LocationListener, View.OnClickListener {
 
 	// Variables utilisées pour les widgets (aspect graphique de l'application)
 	EditText text = null;
@@ -45,6 +49,7 @@ public class MainActivity extends Activity implements LocationListener {
 	TextView emissionGPS = null;
 	TextView emissionSonore = null;
 	TextView frequenceEmission = null;
+	Button boutonDemarrerApp = null;
 
 	/*
 	 * Variables utilisées pour stocker les valeurs qui vont être envoyées sur
@@ -76,7 +81,9 @@ public class MainActivity extends Activity implements LocationListener {
 	String activationEmissionSonore = "--";
 
 	// Variable utilisée pour le format de la date
+	@SuppressLint("SimpleDateFormat")
 	SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	
 
 	// Méthode appelée au lancement de l'application
 	@Override
@@ -91,12 +98,48 @@ public class MainActivity extends Activity implements LocationListener {
 		emissionGPS = (TextView) findViewById(R.id.textView10);
 		emissionSonore = (TextView) findViewById(R.id.textView14);
 		frequenceEmission = (TextView) findViewById(R.id.textView12);
+		boutonDemarrerApp = (Button) findViewById(R.id.btnEnvoyer);
 		objgps = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence,
-				1, this);
 		androidId = Secure.getString(getContentResolver(), Secure.ANDROID_ID);
+		boutonDemarrerApp.setOnClickListener(this);
+
+		
 	}
 
+	@Override
+	public void onClick(View v) {
+		text.setKeyListener(null);
+		boutonDemarrerApp.setEnabled(false);
+		radio.setEnabled(false);
+		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence,1, this);
+		
+		new CountDownTimer(36000000,frequence) {
+
+			@Override
+			public void onTick(long millisUntilFinished) {
+				recupererIdentifiant();
+				determinerType();
+				if (nomEntite.length() > 0) {
+					RecupererInstructions Rqtt = new RecupererInstructions();
+					Rqtt.execute();
+					activerOuDesactiverEmissionGPS();
+					activerOuDesactiverEmissionSonore();
+					changerFrequence();
+					afficherInformations();
+				}				
+			}
+
+			@Override
+			public void onFinish() {
+				// TODO Auto-generated method stub
+				
+			}
+			
+		}.start();
+			
+	}
+	
+	
 	
 	/*
 	 * Les méthodes ci dessous sont invoquées à chaque changement de position du
@@ -149,8 +192,6 @@ public class MainActivity extends Activity implements LocationListener {
 	private void changerFrequence() {
 		if (freq != "--") {
 			frequence = Integer.valueOf(freq);
-			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-					frequence, 1, this);
 		}
 	}
 	
@@ -160,7 +201,6 @@ public class MainActivity extends Activity implements LocationListener {
 	 */
 	private void activerOuDesactiverEmissionSonore() {
 		if (activationEmissionSonore.equals("0")){
-			Log.i("BoatTracker", "normalement c'est desactivee!");
 			activationEmissionSonore = "Désactivée";
 		}
 		if (activationEmissionSonore.equals("1")){
@@ -175,10 +215,11 @@ public class MainActivity extends Activity implements LocationListener {
 	private void activerOuDesactiverEmissionGPS() {
 		if (activationEmissionGPS.equals("0")){
 			activationEmissionGPS = "Désactivée";
+			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 0, this);
 		}
 		if (activationEmissionGPS.equals("1")){
-			Log.i("BoatTracker", "GPS ok");
 			activationEmissionGPS = "Activée";
+			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 1, this);
 		}
 	}
 
@@ -206,16 +247,16 @@ public class MainActivity extends Activity implements LocationListener {
 		determinerType();
 		recupererDate();
 		recupererNiveauBatterie();
-		changerFrequence();
-		activerOuDesactiverEmissionSonore();
-		activerOuDesactiverEmissionGPS();
+		//changerFrequence();
+		//activerOuDesactiverEmissionSonore();
+		//activerOuDesactiverEmissionGPS();
 		afficherInformations();
 
 		if (nomEntite.length() > 0) {
 			EnvoiRequete Rqt = new EnvoiRequete();
-			RecupererInstructions Rqtt = new RecupererInstructions();
+			//RecupererInstructions Rqtt = new RecupererInstructions();
 			Rqt.execute();
-			Rqtt.execute();
+			//Rqtt.execute();
 		}
 
 	}
@@ -271,7 +312,6 @@ public class MainActivity extends Activity implements LocationListener {
 				donnees.add(new BasicNameValuePair("id", androidId));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
-				text.setKeyListener(null);
 
 			} catch (ClientProtocolException e) {
 				// TODO Auto-generated catch block
@@ -311,7 +351,7 @@ public class MainActivity extends Activity implements LocationListener {
 				HttpEntity entity = response.getEntity();
 				is = entity.getContent();
 			} catch (Exception e) {
-				Log.e("log_tag", "Error in http connection " + e.toString());
+				Log.e("log_tag", "Erreur lors de la connexion http " + e.toString());
 			}
 
 			// Conversion de la requête en string
@@ -326,16 +366,20 @@ public class MainActivity extends Activity implements LocationListener {
 				is.close();
 				result = sb.toString();
 			} catch (Exception e) {
-				Log.e("log_tag", "Error converting result " + e.toString());
+				Log.e("log_tag", "Erreur dans la conversion de result " + e.toString());
 			}
 			Log.i("BoatTracker", "result :" + result);
 
 			// Récupération des résultats de la requete
-			String[] tabReponse = result.split(";");
-			freq = tabReponse[0];
-			activationEmissionGPS = tabReponse[1];
-			activationEmissionSonore = tabReponse[2];
-
+			if (result.length() >0){
+				Log.i("BoatTracker", "Rentré dans le if...");
+				String[] tabReponse = result.split(";");
+				freq = tabReponse[0];
+				activationEmissionGPS = tabReponse[1];
+				activationEmissionSonore = tabReponse[2];
+			}
 		}
 	}
+
+	
 }
