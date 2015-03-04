@@ -41,6 +41,10 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity implements LocationListener, View.OnClickListener {
 
+	/******************************************
+	 * 		Les Variables					  *
+	 ******************************************/
+	
 	// Variables utilisées pour les widgets (aspect graphique de l'application)
 	EditText text = null;
 	RadioGroup radio = null;
@@ -84,7 +88,11 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	@SuppressLint("SimpleDateFormat")
 	SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	
-
+	
+	/******************************************
+	 * 		Les Méthodes					  *
+	 ******************************************/
+	
 	// Méthode appelée au lancement de l'application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -101,24 +109,35 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		boutonDemarrerApp = (Button) findViewById(R.id.btnEnvoyer);
 		objgps = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		androidId = Secure.getString(getContentResolver(), Secure.ANDROID_ID);
-		boutonDemarrerApp.setOnClickListener(this);
-
-		
+		boutonDemarrerApp.setOnClickListener(this);	
 	}
 
+	/***********************************************************************************
+	 * 		Redéfinition des méthodes de l'interface OnClickListener. Seule			   *
+	 *  	onClick() est ici modifiée.												   *
+	 ***********************************************************************************/
 	@Override
 	public void onClick(View v) {
+		/* 
+		 * Une fois le bouton "Go!" cliqué : 
+		 * - on interdit la modification du nom
+		 * - on interdit la réutilisation des boutons
+		 * - on lance le GPS
+		 * - on lance un décompte : toutes les 5s pendant 10h on envoie
+		 * une requête pour récuperer les instructions du serveur concernant
+		 * l'émission GPS, l'émission sonore et la fréquence du GPS. 
+		 */
 		text.setKeyListener(null);
 		boutonDemarrerApp.setEnabled(false);
 		radio.setEnabled(false);
 		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence,1, this);
 		
-		new CountDownTimer(36000000,frequence) {
+		new CountDownTimer(36000000,5000) {
 
 			@Override
 			public void onTick(long millisUntilFinished) {
 				recupererIdentifiant();
-				determinerType();
+				recupererType();
 				if (nomEntite.length() > 0) {
 					RecupererInstructions Rqtt = new RecupererInstructions();
 					Rqtt.execute();
@@ -139,16 +158,107 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 			
 	}
 	
-	
+	/***********************************************************************************
+     *	 Les méthodes ci-dessous sont invoquées de manière récurrente grâce au         *
+	 *	 décompte du CoutndownTimer. Elles sont appelées toutes les 5s lorsque         *
+	 *    que la méthode onTick() est appellée.										   *					   *
+	 ***********************************************************************************/
 	
 	/*
-	 * Les méthodes ci dessous sont invoquées à chaque changement de position du
-	 * GPS, c'est à dire à chaque fois que la méthode onLocationChanged() est
-	 * appellée
+	 * Applique le changement de fréquence d'émission du GPS décidé par le
+	 * serveur
 	 */
+	private void changerFrequence() {
+		if (freq != "--") {
+			frequence = Integer.valueOf(freq);
+		}
+	}
+	
+	/* 
+	 * Active ou désactive l'émission sonore selon les informations
+	 * récoltées sur le serveur 
+	 */
+	private void activerOuDesactiverEmissionSonore() {
+		if (activationEmissionSonore.equals("0")){
+			activationEmissionSonore = "Désactivée";
+		}
+		if (activationEmissionSonore.equals("1")){
+			activationEmissionSonore = "Activée";
+		}
+	}
+
+	/* 
+	 * Active ou désactive l'émission GPS selon les informations
+	 * récoltées sur le serveur 
+	 */
+	private void activerOuDesactiverEmissionGPS() {
+		if (activationEmissionGPS.equals("0")){
+			activationEmissionGPS = "Désactivée";
+			objgps.removeUpdates(this);
+		}
+		if (activationEmissionGPS.equals("1")){
+			activationEmissionGPS = "Activée";
+			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 1, this);
+		}
+	}
+	
+	
+	/***********************************************************************************
+	 * 		Redéfinition des méthodes de l'interface LocationListener. Seule		   *
+	 *  	onLocationChanged() est ici modifiée.									   *
+	 ***********************************************************************************/
+	@Override
+	public void onLocationChanged(Location location) {
+		this.loc = location;
+		Log.i("BoatTracker", "1) la position a bougée");
+		recupererCoordGPS();
+		recupererIdentifiant();
+		recupererType();
+		recupererDate();
+		recupererNiveauBatterie();
+		//changerFrequence();
+		//activerOuDesactiverEmissionSonore();
+		//activerOuDesactiverEmissionGPS();
+		afficherInformations();
+
+		if (nomEntite.length() > 0) {
+			Log.i("BoatTracker", "2) le nom n'est pas null je lance la requete");
+			EnvoiRequete Rqt = new EnvoiRequete();
+			Log.i("BoatTracker", "3) requete instanciée");
+			//RecupererInstructions Rqtt = new RecupererInstructions();
+			Rqt.execute();
+			Log.i("BoatTracker", "4) requete executée");
+			//Rqtt.execute();
+		}
+
+	}
+
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onProviderEnabled(String provider) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onProviderDisabled(String provider) {
+		// TODO Auto-generated method stub
+
+	}
+	
+	/***********************************************************************************
+	 *	 Les méthodes ci-dessous sont invoquées à chaque changement de position du     *
+	 *	 GPS, c'est à dire à chaque fois que la méthode onLocationChanged() est		   *
+	 *	 appellée																	   *
+	 ************************************************************************************/
 
 	// Détermine quel type d'entité envoie les informations au serveur
-	private void determinerType() {
+	private void recupererType() {
 		if (radio.getCheckedRadioButtonId() == R.id.radio2) {
 			type = "Bouee";
 		} else {
@@ -185,44 +295,6 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		batterie = String.valueOf(niveauBat);
 	}
 
-	/*
-	 * Applique le changement de fréquence d'émission du GPS décidé par le
-	 * serveur
-	 */
-	private void changerFrequence() {
-		if (freq != "--") {
-			frequence = Integer.valueOf(freq);
-		}
-	}
-	
-	/* 
-	 * Active ou désactive l'émission sonore selon les informations
-	 * récoltées sur le serveur 
-	 */
-	private void activerOuDesactiverEmissionSonore() {
-		if (activationEmissionSonore.equals("0")){
-			activationEmissionSonore = "Désactivée";
-		}
-		if (activationEmissionSonore.equals("1")){
-			activationEmissionSonore = "Activée";
-		}
-	}
-
-	/* 
-	 * Active ou désactive l'émission GPS selon les informations
-	 * récoltées sur le serveur 
-	 */
-	private void activerOuDesactiverEmissionGPS() {
-		if (activationEmissionGPS.equals("0")){
-			activationEmissionGPS = "Désactivée";
-			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 0, this);
-		}
-		if (activationEmissionGPS.equals("1")){
-			activationEmissionGPS = "Activée";
-			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 1, this);
-		}
-	}
-
 	// Afficher les informations sur l'écran du smartphone
 	private void afficherInformations() {
 		latitude.setText(lat);
@@ -233,51 +305,7 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	}
 
 	
-	/*
-	 * Redéfinition des méthodes de l'interface LocationListener. Seule
-	 * onLocationChanged() est ici modifiée.
-	 */
-
-	@Override
-	public void onLocationChanged(Location location) {
-		this.loc = location;
-		Log.i("BoatTracker", "la position a bougée");
-		recupererCoordGPS();
-		recupererIdentifiant();
-		determinerType();
-		recupererDate();
-		recupererNiveauBatterie();
-		//changerFrequence();
-		//activerOuDesactiverEmissionSonore();
-		//activerOuDesactiverEmissionGPS();
-		afficherInformations();
-
-		if (nomEntite.length() > 0) {
-			EnvoiRequete Rqt = new EnvoiRequete();
-			//RecupererInstructions Rqtt = new RecupererInstructions();
-			Rqt.execute();
-			//Rqtt.execute();
-		}
-
-	}
-
-	@Override
-	public void onStatusChanged(String provider, int status, Bundle extras) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void onProviderEnabled(String provider) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void onProviderDisabled(String provider) {
-		// TODO Auto-generated method stub
-
-	}
+	
 
 	
 	/*
@@ -294,12 +322,12 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		}
 
 		public void envoyerMessage() {
-
+			Log.i("BoatTracker2", "1) suis dans envoyer msg");
 			HttpClient client = new DefaultHttpClient();
 			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
 			// HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
 			// HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
-
+			Log.i("BoatTracker2", "2) suis avant le try");
 			try {
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("type", type));
@@ -312,13 +340,14 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 				donnees.add(new BasicNameValuePair("id", androidId));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
-				
+				Log.i("BoatTracker2", "3) suis dans le try");
 			} catch (ClientProtocolException e) {
 				// TODO Auto-generated catch block
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 			}
-
+			Log.i("BoatTracker2", "4) suis après le try");
+			Log.i("BoatTracker2", "5) Type : " + type);
 		}
 
 	}
@@ -368,11 +397,11 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 			} catch (Exception e) {
 				Log.e("log_tag", "Erreur dans la conversion de result " + e.toString());
 			}
-			Log.i("BoatTracker", "result :" + result);
+			Log.i("BoatTracker", "5) result :" + result);
 
 			// Récupération des résultats de la requete
 			if (result.length() >0){
-				Log.i("BoatTracker", "Rentré dans le if...");
+				Log.i("BoatTracker", "6) Rentré dans le if...");
 				String[] tabReponse = result.split(";");
 				freq = tabReponse[0];
 				activationEmissionGPS = tabReponse[1];
@@ -380,6 +409,4 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 			}
 		}
 	}
-
-	
 }
