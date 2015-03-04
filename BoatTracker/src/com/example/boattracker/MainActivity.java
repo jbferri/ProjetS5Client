@@ -21,12 +21,15 @@ import org.apache.http.message.BasicNameValuePair;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
@@ -67,22 +70,25 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	String type = null;
 	String batterie = null;
 	String date = null;
+	
+	// Variable utilisée pour l'obtention du niveau de batterie
+	Intent batteryStatus = null;
 
 	// Variables utilisées pour la gestion du GPS
 	LocationManager objgps = null;;
 	Location loc = null;
+	String activationEmissionGPS = "--";
 
-	// Variable utilisée pour l'obtention du niveau de batterie
-	Intent batteryStatus = null;
+	// Variables utilisées pour la gestion de l'emission sonore
+	BluetoothAdapter mBluetoothAdapter;
+	String activationEmissionSonore = "--";
+	SoundPool soundPool;
+	int soundID;
+	int streamID;
 
-	/*
-	 * Variables utilisées pour récupérer les modifications de paramètres
-	 * décidées au niveau du serveur
-	 */
+	// Variables utilisées pour la gestion de la fréquence d'emission
 	int frequence;
 	String freq = "--";
-	String activationEmissionGPS = "--";
-	String activationEmissionSonore = "--";
 
 	// Variable utilisée pour le format de la date
 	@SuppressLint("SimpleDateFormat")
@@ -109,6 +115,9 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		boutonDemarrerApp = (Button) findViewById(R.id.btnEnvoyer);
 		objgps = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		androidId = Secure.getString(getContentResolver(), Secure.ANDROID_ID);
+		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+		soundPool = new SoundPool(1, AudioManager.STREAM_MUSIC, 0);
+		soundID = soundPool.load(this, R.raw.cornedebrume, 1);
 		boutonDemarrerApp.setOnClickListener(this);	
 	}
 
@@ -175,15 +184,19 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	}
 	
 	/* 
-	 * Active ou désactive l'émission sonore selon les informations
+	 * Active ou désactive l'émission sonore et le bluetooth selon les informations
 	 * récoltées sur le serveur 
 	 */
 	private void activerOuDesactiverEmissionSonore() {
 		if (activationEmissionSonore.equals("0")){
 			activationEmissionSonore = "Désactivée";
+			mBluetoothAdapter.disable();
+			soundPool.stop(streamID);
 		}
 		if (activationEmissionSonore.equals("1")){
 			activationEmissionSonore = "Activée";
+			mBluetoothAdapter.enable();
+			streamID = soundPool.play(soundID, 1f, 1f, 0, -1, 1f);
 		}
 	}
 
@@ -210,25 +223,16 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	@Override
 	public void onLocationChanged(Location location) {
 		this.loc = location;
-		Log.i("BoatTracker", "1) la position a bougée");
 		recupererCoordGPS();
 		recupererIdentifiant();
 		recupererType();
 		recupererDate();
 		recupererNiveauBatterie();
-		//changerFrequence();
-		//activerOuDesactiverEmissionSonore();
-		//activerOuDesactiverEmissionGPS();
 		afficherInformations();
 
 		if (nomEntite.length() > 0) {
-			Log.i("BoatTracker", "2) le nom n'est pas null je lance la requete");
 			EnvoiRequete Rqt = new EnvoiRequete();
-			Log.i("BoatTracker", "3) requete instanciée");
-			//RecupererInstructions Rqtt = new RecupererInstructions();
 			Rqt.execute();
-			Log.i("BoatTracker", "4) requete executée");
-			//Rqtt.execute();
 		}
 
 	}
@@ -306,11 +310,14 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 
 	
 	
-
-	
-	/*
-	 * Définition d'AsyncTasks qui permettent d'envoyer des requetes HTTP
-	 */
+	/***********************************************************************************
+	 *	 Définition d'AsyncTasks qui permettent d'envoyer des requetes HTTP	:	       *
+	 *	  - une Asynctask EnvoiRequete pour transmettre les infos au serveur 		   *
+	 *	    (coordonnées GPS, niveau batterie,... 									   *
+	 *    - une Asynctask RecupererInstructions pour récuperer dans la BDD du 		   *
+	 *      serveur certains parmamètres de fonctionnement (activation GPS,            *
+	 *      activation de l'emission sonore, changement de la fréquence d'émission)	   *
+	 ************************************************************************************/
 
 	// Envoi des données au serveur
 	private class EnvoiRequete extends AsyncTask<String, Integer, Double> {
@@ -322,12 +329,10 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		}
 
 		public void envoyerMessage() {
-			Log.i("BoatTracker2", "1) suis dans envoyer msg");
 			HttpClient client = new DefaultHttpClient();
 			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
-			// HttpPost post = new HttpPost("http://10.29.226.210:8888/cartes/reception.php");
+			//HttpPost post = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/ReceptionDonnees.php");
 			// HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
-			Log.i("BoatTracker2", "2) suis avant le try");
 			try {
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("type", type));
@@ -340,14 +345,11 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 				donnees.add(new BasicNameValuePair("id", androidId));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
 				client.execute(post);
-				Log.i("BoatTracker2", "3) suis dans le try");
 			} catch (ClientProtocolException e) {
 				// TODO Auto-generated catch block
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 			}
-			Log.i("BoatTracker2", "4) suis après le try");
-			Log.i("BoatTracker2", "5) Type : " + type);
 		}
 
 	}
@@ -371,6 +373,7 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 			try {
 				HttpClient httpclient = new DefaultHttpClient();
 				HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
+				//HttpPost httppost = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/EnvoiDonnees.php");
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("nom", nomEntite));
 				donnees.add(new BasicNameValuePair("id", androidId));
@@ -401,7 +404,6 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 
 			// Récupération des résultats de la requete
 			if (result.length() >0){
-				Log.i("BoatTracker", "6) Rentré dans le if...");
 				String[] tabReponse = result.split(";");
 				freq = tabReponse[0];
 				activationEmissionGPS = tabReponse[1];
