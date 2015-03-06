@@ -330,9 +330,9 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 
 		public void envoyerMessage() {
 			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
+			//HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
 			//HttpPost post = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/ReceptionDonnees.php");
-			// HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/reception1&1.php");
+			HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/ReceptionDonnees.php");
 			try {
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("type", type));
@@ -372,8 +372,9 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 			// Envoi de la commande http
 			try {
 				HttpClient httpclient = new DefaultHttpClient();
-				HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
+				//HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
 				//HttpPost httppost = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/EnvoiDonnees.php");
+				HttpPost httppost = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/EnvoiDonnees.php");
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("nom", nomEntite));
 				donnees.add(new BasicNameValuePair("id", androidId));
