@@ -33,7 +33,6 @@ import android.media.SoundPool;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.provider.Settings.Secure;
 import android.util.Log;
 import android.view.View;
@@ -42,12 +41,13 @@ import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
-public class MainActivity extends Activity implements LocationListener, View.OnClickListener {
+public class MainActivity extends Activity implements LocationListener,
+		View.OnClickListener {
 
 	/******************************************
-	 * 		Les Variables					  *
+	 * Les Variables *
 	 ******************************************/
-	
+
 	// Variables utilisées pour les widgets (aspect graphique de l'application)
 	EditText text = null;
 	RadioGroup radio = null;
@@ -70,7 +70,7 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	String type = null;
 	String batterie = null;
 	String date = null;
-	
+
 	// Variable utilisée pour l'obtention du niveau de batterie
 	Intent batteryStatus = null;
 
@@ -93,12 +93,11 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 	// Variable utilisée pour le format de la date
 	@SuppressLint("SimpleDateFormat")
 	SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	
-	
+
 	/******************************************
-	 * 		Les Méthodes					  *
+	 * Les Méthodes *
 	 ******************************************/
-	
+
 	// Méthode appelée au lancement de l'application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -118,59 +117,86 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		soundPool = new SoundPool(1, AudioManager.STREAM_MUSIC, 0);
 		soundID = soundPool.load(this, R.raw.cornedebrume, 1);
-		boutonDemarrerApp.setOnClickListener(this);	
+		boutonDemarrerApp.setOnClickListener(this);
 	}
 
 	/***********************************************************************************
-	 * 		Redéfinition des méthodes de l'interface OnClickListener. Seule			   *
-	 *  	onClick() est ici modifiée.												   *
+	 * Redéfinition des méthodes de l'interface OnClickListener. Seule *
+	 * onClick() est ici modifiée. *
 	 ***********************************************************************************/
 	@Override
 	public void onClick(View v) {
-		/* 
+		/*
 		 * Une fois le bouton "Go!" cliqué : 
-		 * - on interdit la modification du nom
-		 * - on interdit la réutilisation des boutons
-		 * - on lance le GPS
-		 * - on lance un décompte : toutes les 5s pendant 10h on envoie
-		 * une requête pour récuperer les instructions du serveur concernant
-		 * l'émission GPS, l'émission sonore et la fréquence du GPS. 
+		 * - on interdit la modification du nom 
+		 * - on interdit la réutilisation du bouton "Go!"
+		 * - on lance le GPS 
 		 */
 		text.setKeyListener(null);
 		boutonDemarrerApp.setEnabled(false);
 		radio.setEnabled(false);
-		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence,1, this);
-		
-		new CountDownTimer(36000000,5000) {
-
-			@Override
-			public void onTick(long millisUntilFinished) {
-				recupererIdentifiant();
-				recupererType();
-				if (nomEntite.length() > 0) {
-					RecupererInstructions Rqtt = new RecupererInstructions();
-					Rqtt.execute();
-					activerOuDesactiverEmissionGPS();
-					activerOuDesactiverEmissionSonore();
-					changerFrequence();
-					afficherInformations();
-				}				
-			}
-
-			@Override
-			public void onFinish() {
-				// TODO Auto-generated method stub
-				
-			}
-			
-		}.start();
-			
+		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence, 1, this);			
 	}
+
+	/***********************************************************************************
+	 * Redéfinition des méthodes de l'interface LocationListener. Seule *
+	 * onLocationChanged() est ici modifiée. onLocationChanged() est appellée à *
+	 * chaque changement de position GPS *
+	 ***********************************************************************************/
+	@Override
+	public void onLocationChanged(Location location) {
+		//On récupère la nouvelle position GPS
+		this.loc = location;
+		//On appelle les méthodes pour récupérer les infos à envoyer au serveur
+		recupererCoordGPS();
+		recupererIdentifiant();
+		recupererType();
+		recupererDate();
+		recupererNiveauBatterie();
+		/* On envoie la requete http avec toutes les infos et on récupère
+		 * dans la réponse http la valeur de la fréquence ainsi que les booléens
+		 * pour l'activation GPS et l'activation de l'émission sonore
+		 */
+		EnvoiRequete Rqt = new EnvoiRequete();
+		Rqt.execute();
+		/* On appelle les méthodes pour fixer la frequence et activer ou
+		 * désactiver les émission sonore et GPS.
+		 */
+		activerOuDesactiverEmissionGPS();
+		activerOuDesactiverEmissionSonore();
+		changerFrequence();
+		// On affiche les infos sur l'écran du smartphone
+		afficherInformations();
+		/* Si le GPS a été désactivé, on locationChanged() n'est plus appelée.
+		 * Donc il n'y a plus de requête http envoyée via l'AsyncTask EnvoiRequete.
+		 * Pour continuer à envoyer des requêtes http et pouvoir par exemple réactiver le GPS
+		 * on lance un nouveau thread d'écoute grâce à la méthode ecouteActivationGPS();
+		 */
+		if (activationEmissionGPS.equals("0")) {
+			ecouteActivationGPS();
+		}
+	}
+
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void onProviderEnabled(String provider) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void onProviderDisabled(String provider) {
+		// TODO Auto-generated method stub
+	}	
 	
 	/***********************************************************************************
-     *	 Les méthodes ci-dessous sont invoquées de manière récurrente grâce au         *
-	 *	 décompte du CoutndownTimer. Elles sont appelées toutes les 5s lorsque         *
-	 *    que la méthode onTick() est appellée.										   *					   *
+	 * Les méthodes ci-dessous sont invoquées après chaque réponse http reçue *
+	 * de la part du serveur. Elles permettent de fixer la fréquence décidée *
+	 * par l'administrateur du serveur, d'activer/désactiver les émissions sonores *
+	 * et GPS, et d'afficher les informations sur l'écran du smartphone *
 	 ***********************************************************************************/
 	
 	/*
@@ -182,83 +208,83 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 			frequence = Integer.valueOf(freq);
 		}
 	}
-	
-	/* 
-	 * Active ou désactive l'émission sonore et le bluetooth selon les informations
-	 * récoltées sur le serveur 
+
+	/*
+	 * Active ou désactive l'émission sonore et le bluetooth selon les
+	 * informations récoltées sur le serveur
 	 */
 	private void activerOuDesactiverEmissionSonore() {
-		if (activationEmissionSonore.equals("0")){
-			activationEmissionSonore = "Désactivée";
+		if (activationEmissionSonore.equals("0")) {
 			mBluetoothAdapter.disable();
 			soundPool.stop(streamID);
 		}
-		if (activationEmissionSonore.equals("1")){
-			activationEmissionSonore = "Activée";
+		if (activationEmissionSonore.equals("1")) {
 			mBluetoothAdapter.enable();
 			streamID = soundPool.play(soundID, 1f, 1f, 0, -1, 1f);
 		}
 	}
 
-	/* 
-	 * Active ou désactive l'émission GPS selon les informations
-	 * récoltées sur le serveur 
+	/*
+	 * Active ou désactive l'émission GPS selon les informations récoltées sur
+	 * le serveur
 	 */
 	private void activerOuDesactiverEmissionGPS() {
-		if (activationEmissionGPS.equals("0")){
-			activationEmissionGPS = "Désactivée";
+		if (activationEmissionGPS.equals("0")) {
 			objgps.removeUpdates(this);
 		}
-		if (activationEmissionGPS.equals("1")){
-			activationEmissionGPS = "Activée";
+		if (activationEmissionGPS.equals("1")) {
 			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 1, this);
 		}
 	}
 	
-	
-	/***********************************************************************************
-	 * 		Redéfinition des méthodes de l'interface LocationListener. Seule		   *
-	 *  	onLocationChanged() est ici modifiée.									   *
-	 ***********************************************************************************/
-	@Override
-	public void onLocationChanged(Location location) {
-		this.loc = location;
-		recupererCoordGPS();
-		recupererIdentifiant();
-		recupererType();
-		recupererDate();
-		recupererNiveauBatterie();
-		afficherInformations();
-
-		if (nomEntite.length() > 0) {
-			EnvoiRequete Rqt = new EnvoiRequete();
-			Rqt.execute();
+	// Afficher les informations sur l'écran du smartphone
+		private void afficherInformations() {
+			latitude.setText(lat);
+			longitude.setText(lon);
+			frequenceEmission.setText(freq);
+			emissionGPS.setText(activationEmissionGPS);
+			emissionSonore.setText(activationEmissionSonore);
 		}
 
-	}
-
-	@Override
-	public void onStatusChanged(String provider, int status, Bundle extras) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void onProviderEnabled(String provider) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void onProviderDisabled(String provider) {
-		// TODO Auto-generated method stub
-
+	/***********************************************************************************
+	 * Le méthode ci-dessous est invoquée uniquement lorsque le GPS *
+	 * est désactivé par l'administrateur du serveur. Elle permet de lancer *
+	 * une nouvelle Asynctask afin de continuer à "écouter" le serveur et ainsi *
+	 * réactiver le GPS si le serveur le demande. *
+	 ***********************************************************************************/
+	public void ecouteActivationGPS(){
+		while(true){
+			RecupererInstructions Rqtt = new RecupererInstructions();
+			//On envoie une requête à la fréquence décidée par le serveur
+			try {
+				Thread.sleep(frequence);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			/* On envoie la requete http avec juste un id et on récupère
+			 * dans la réponse http la valeur de la fréquence ainsi que les booléens
+			 * pour l'activation GPS et l'activation de l'émission sonore
+			 */
+			Rqtt.execute();
+			/* On appelle les méthodes pour fixer la frequence et activer ou
+			 * désactiver les émission sonore et GPS et on affiche les infos à l'écran.
+			 */
+			activerOuDesactiverEmissionGPS();
+			activerOuDesactiverEmissionSonore();
+			changerFrequence();
+			afficherInformations();
+			//On sort de la boucle si le GPS a été remis en marche.
+			if (activationEmissionGPS.equals("1")) {
+				break;
+			}
+		}
 	}
 	
 	/***********************************************************************************
-	 *	 Les méthodes ci-dessous sont invoquées à chaque changement de position du     *
-	 *	 GPS, c'est à dire à chaque fois que la méthode onLocationChanged() est		   *
-	 *	 appellée																	   *
+	 * Les méthodes ci-dessous sont invoquées à chaque changement de position du *
+	 * GPS, c'est à dire à chaque fois que la méthode onLocationChanged() est *
+	 * appellée *
 	 ************************************************************************************/
 
 	// Détermine quel type d'entité envoie les informations au serveur
@@ -299,24 +325,15 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		batterie = String.valueOf(niveauBat);
 	}
 
-	// Afficher les informations sur l'écran du smartphone
-	private void afficherInformations() {
-		latitude.setText(lat);
-		longitude.setText(lon);
-		frequenceEmission.setText(freq);
-		emissionGPS.setText(activationEmissionGPS);
-		emissionSonore.setText(activationEmissionSonore);
-	}
-
-	
-	
 	/***********************************************************************************
-	 *	 Définition d'AsyncTasks qui permettent d'envoyer des requetes HTTP	:	       *
-	 *	  - une Asynctask EnvoiRequete pour transmettre les infos au serveur 		   *
-	 *	    (coordonnées GPS, niveau batterie,... 									   *
-	 *    - une Asynctask RecupererInstructions pour récuperer dans la BDD du 		   *
-	 *      serveur certains parmamètres de fonctionnement (activation GPS,            *
-	 *      activation de l'emission sonore, changement de la fréquence d'émission)	   *
+	 * Définition d'AsyncTasks qui permettent d'envoyer des requetes HTTP : * 
+	 *   - une Asynctask EnvoiRequete pour transmettre les infos au serveur *
+	 *     (coordonnées GPS, niveau batterie,...) lorsque le GPS est actif et que *
+	 *     onLocationChanged() est appellée régulièrement. * 
+	 *   - une Asynctask RecupererInstructions pour récuperer dans la BDD du *
+	 *     serveur certains paramètres de fonctionnement (activation GPS, *
+	 *     activation de l'emission sonore, changement de la fréquence d'émission) *
+	 *     lorsque le GPS est désactivé. *
 	 ************************************************************************************/
 
 	// Envoi des données au serveur
@@ -329,11 +346,15 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 		}
 
 		public void envoyerMessage() {
-			HttpClient client = new DefaultHttpClient();
-			//HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
-			//HttpPost post = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/ReceptionDonnees.php");
-			HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/ReceptionDonnees.php");
+			InputStream is = null;
+			String result = "";
+			
+			// Envoi requête http et récupération de la réponse
 			try {
+				HttpClient client = new DefaultHttpClient();
+				HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
+				//HttpPost post = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/ReceptionDonnees.php");
+				//HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/ReceptionDonnees.php");
 				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 				donnees.add(new BasicNameValuePair("type", type));
 				donnees.add(new BasicNameValuePair("nom", nomEntite));
@@ -344,53 +365,18 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 				donnees.add(new BasicNameValuePair("precision", precision));
 				donnees.add(new BasicNameValuePair("id", androidId));
 				post.setEntity(new UrlEncodedFormEntity(donnees));
-				client.execute(post);
+				HttpResponse response = client.execute(post);
+				HttpEntity entity = response.getEntity();
+				is = entity.getContent();
 			} catch (ClientProtocolException e) {
 				// TODO Auto-generated catch block
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 			}
-		}
 
-	}
-
-	// Récupération des informations auprès du serveur
-	private class RecupererInstructions extends
-			AsyncTask<String, Integer, Double> {
-
-		@Override
-		protected Double doInBackground(String... params) {
-			demanderInfos();
-			return null;
-		}
-
-		public void demanderInfos() {
-
-			InputStream is = null;
-			String result = "";
-
-			// Envoi de la commande http
+			// Conversion de la réponse en string
 			try {
-				HttpClient httpclient = new DefaultHttpClient();
-				//HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
-				//HttpPost httppost = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/EnvoiDonnees.php");
-				HttpPost httppost = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/EnvoiDonnees.php");
-				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
-				donnees.add(new BasicNameValuePair("nom", nomEntite));
-				donnees.add(new BasicNameValuePair("id", androidId));
-				donnees.add(new BasicNameValuePair("type", type));
-				httppost.setEntity(new UrlEncodedFormEntity(donnees));
-				HttpResponse response = httpclient.execute(httppost);
-				HttpEntity entity = response.getEntity();
-				is = entity.getContent();
-			} catch (Exception e) {
-				Log.e("log_tag", "Erreur lors de la connexion http " + e.toString());
-			}
-
-			// Conversion de la requête en string
-			try {
-				BufferedReader reader = new BufferedReader(
-						new InputStreamReader(is, "utf8"));
+				BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf8"));
 				StringBuilder sb = new StringBuilder();
 				String line = null;
 				while ((line = reader.readLine()) != null) {
@@ -399,12 +385,66 @@ public class MainActivity extends Activity implements LocationListener, View.OnC
 				is.close();
 				result = sb.toString();
 			} catch (Exception e) {
-				Log.e("log_tag", "Erreur dans la conversion de result " + e.toString());
+				Log.e("log_tag","Erreur dans la conversion de result " + e.toString());
+			}
+			
+			// Récupération des résultats de la requete
+			if (result.length() > 0) {
+				String[] tabReponse = result.split(";");
+				freq = tabReponse[0];
+				activationEmissionGPS = tabReponse[1];
+				activationEmissionSonore = tabReponse[2];
+			}
+		}
+
+	}
+
+	// Récupération des informations auprès du serveur
+	private class RecupererInstructions extends AsyncTask<String, Integer, Double> {
+
+		@Override
+		protected Double doInBackground(String... params) {
+			demanderInfos();
+			return null;
+		}
+
+		public void demanderInfos() {
+			InputStream is = null;
+			String result = "";
+
+			// Envoi de la commande http
+			try {
+				HttpClient httpclient = new DefaultHttpClient();
+				HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
+				//HttpPost httppost = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/EnvoiDonnees.php");
+				//HttpPost httppost = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/EnvoiDonnees.php");
+				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
+				donnees.add(new BasicNameValuePair("id", androidId));
+				httppost.setEntity(new UrlEncodedFormEntity(donnees));
+				HttpResponse response = httpclient.execute(httppost);
+				HttpEntity entity = response.getEntity();
+				is = entity.getContent();
+			} catch (Exception e) {
+				Log.e("log_tag","Erreur lors de la connexion http " + e.toString());
+			}
+
+			// Conversion de la requête en string
+			try {
+				BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf8"));
+				StringBuilder sb = new StringBuilder();
+				String line = null;
+				while ((line = reader.readLine()) != null) {
+					sb.append(line + "\n");
+				}
+				is.close();
+				result = sb.toString();
+			} catch (Exception e) {
+				Log.e("log_tag","Erreur dans la conversion de result " + e.toString());
 			}
 			Log.i("BoatTracker", "5) result :" + result);
 
 			// Récupération des résultats de la requete
-			if (result.length() >0){
+			if (result.length() > 0) {
 				String[] tabReponse = result.split(";");
 				freq = tabReponse[0];
 				activationEmissionGPS = tabReponse[1];
