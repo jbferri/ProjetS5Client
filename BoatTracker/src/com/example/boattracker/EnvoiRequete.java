@@ -44,9 +44,9 @@ public class EnvoiRequete extends AsyncTask<String, Integer, Double> {
 		// Envoi requête http et récupération de la réponse
 		try {
 			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
+			// HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
 			// HttpPost post = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/ReceptionDonnees.php");
-			// HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/ReceptionDonnees.php");
+			HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/ReceptionDonnees.php");
 			List<NameValuePair> donnees = new ArrayList<NameValuePair>();
 			donnees.add(new BasicNameValuePair("type", type));
 			donnees.add(new BasicNameValuePair("nom", nomEntite));
