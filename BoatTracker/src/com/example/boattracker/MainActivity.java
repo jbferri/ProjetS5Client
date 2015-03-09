@@ -1,23 +1,7 @@
 package com.example.boattracker;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -30,11 +14,9 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.AudioManager;
 import android.media.SoundPool;
-import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.provider.Settings.Secure;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -77,18 +59,18 @@ public class MainActivity extends Activity implements LocationListener,
 	// Variables utilisées pour la gestion du GPS
 	LocationManager objgps = null;;
 	Location loc = null;
-	String activationEmissionGPS = "--";
+	public static String activationEmissionGPS = "--";
 
 	// Variables utilisées pour la gestion de l'emission sonore
 	BluetoothAdapter mBluetoothAdapter;
-	String activationEmissionSonore = "--";
+	public static String activationEmissionSonore = "--";
 	SoundPool soundPool;
 	int soundID;
 	int streamID;
 
 	// Variables utilisées pour la gestion de la fréquence d'emission
 	int frequence;
-	String freq = "--";
+	public static String freq = "--";
 
 	// Variable utilisée pour le format de la date
 	@SuppressLint("SimpleDateFormat")
@@ -158,7 +140,7 @@ public class MainActivity extends Activity implements LocationListener,
 		 * pour l'activation GPS et l'activation de l'émission sonore
 		 */
 		EnvoiRequete Rqt = new EnvoiRequete();
-		Rqt.execute();
+		Rqt.execute(type, nomEntite, lat, lon, date, batterie, precision, androidId);
 		/* On appelle les méthodes pour fixer la frequence et activer ou
 		 * désactiver les émission sonore et GPS.
 		 */
@@ -266,7 +248,7 @@ public class MainActivity extends Activity implements LocationListener,
 			 * dans la réponse http la valeur de la fréquence ainsi que les booléens
 			 * pour l'activation GPS et l'activation de l'émission sonore
 			 */
-			Rqtt.execute();
+			Rqtt.execute(androidId);
 			/* On appelle les méthodes pour fixer la frequence et activer ou
 			 * désactiver les émission sonore et GPS et on affiche les infos à l'écran.
 			 */
@@ -325,131 +307,4 @@ public class MainActivity extends Activity implements LocationListener,
 		batterie = String.valueOf(niveauBat);
 	}
 
-	/***********************************************************************************
-	 * Définition d'AsyncTasks qui permettent d'envoyer des requetes HTTP : * 
-	 *   - une Asynctask EnvoiRequete pour transmettre les infos au serveur *
-	 *     (coordonnées GPS, niveau batterie,...) lorsque le GPS est actif et que *
-	 *     onLocationChanged() est appellée régulièrement. * 
-	 *   - une Asynctask RecupererInstructions pour récuperer dans la BDD du *
-	 *     serveur certains paramètres de fonctionnement (activation GPS, *
-	 *     activation de l'emission sonore, changement de la fréquence d'émission) *
-	 *     lorsque le GPS est désactivé. *
-	 ************************************************************************************/
-
-	// Envoi des données au serveur
-	private class EnvoiRequete extends AsyncTask<String, Integer, Double> {
-
-		@Override
-		protected Double doInBackground(String... params) {
-			envoyerMessage();
-			return null;
-		}
-
-		public void envoyerMessage() {
-			InputStream is = null;
-			String result = "";
-			
-			// Envoi requête http et récupération de la réponse
-			try {
-				HttpClient client = new DefaultHttpClient();
-				HttpPost post = new HttpPost("http://172.20.10.3/GSCtuto/ReceptionDonnees.php");
-				//HttpPost post = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/ReceptionDonnees.php");
-				//HttpPost post = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/ReceptionDonnees.php");
-				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
-				donnees.add(new BasicNameValuePair("type", type));
-				donnees.add(new BasicNameValuePair("nom", nomEntite));
-				donnees.add(new BasicNameValuePair("latitude", lat));
-				donnees.add(new BasicNameValuePair("longitude", lon));
-				donnees.add(new BasicNameValuePair("heure", date));
-				donnees.add(new BasicNameValuePair("batterie", batterie));
-				donnees.add(new BasicNameValuePair("precision", precision));
-				donnees.add(new BasicNameValuePair("id", androidId));
-				post.setEntity(new UrlEncodedFormEntity(donnees));
-				HttpResponse response = client.execute(post);
-				HttpEntity entity = response.getEntity();
-				is = entity.getContent();
-			} catch (ClientProtocolException e) {
-				// TODO Auto-generated catch block
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-			}
-
-			// Conversion de la réponse en string
-			try {
-				BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf8"));
-				StringBuilder sb = new StringBuilder();
-				String line = null;
-				while ((line = reader.readLine()) != null) {
-					sb.append(line + "\n");
-				}
-				is.close();
-				result = sb.toString();
-			} catch (Exception e) {
-				Log.e("log_tag","Erreur dans la conversion de result " + e.toString());
-			}
-			
-			// Récupération des résultats de la requete
-			if (result.length() > 0) {
-				String[] tabReponse = result.split(";");
-				freq = tabReponse[0];
-				activationEmissionGPS = tabReponse[1];
-				activationEmissionSonore = tabReponse[2];
-			}
-		}
-
-	}
-
-	// Récupération des informations auprès du serveur
-	private class RecupererInstructions extends AsyncTask<String, Integer, Double> {
-
-		@Override
-		protected Double doInBackground(String... params) {
-			demanderInfos();
-			return null;
-		}
-
-		public void demanderInfos() {
-			InputStream is = null;
-			String result = "";
-
-			// Envoi de la commande http
-			try {
-				HttpClient httpclient = new DefaultHttpClient();
-				HttpPost httppost = new HttpPost("http://172.20.10.3/GSCtuto/EnvoiDonnees.php");
-				//HttpPost httppost = new HttpPost("http://172.20.10.8:8888/ProjetS5/Transfert/EnvoiDonnees.php");
-				//HttpPost httppost = new HttpPost("http://orion-brest.com/TestProjetS5/Transfert/EnvoiDonnees.php");
-				List<NameValuePair> donnees = new ArrayList<NameValuePair>();
-				donnees.add(new BasicNameValuePair("id", androidId));
-				httppost.setEntity(new UrlEncodedFormEntity(donnees));
-				HttpResponse response = httpclient.execute(httppost);
-				HttpEntity entity = response.getEntity();
-				is = entity.getContent();
-			} catch (Exception e) {
-				Log.e("log_tag","Erreur lors de la connexion http " + e.toString());
-			}
-
-			// Conversion de la requête en string
-			try {
-				BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf8"));
-				StringBuilder sb = new StringBuilder();
-				String line = null;
-				while ((line = reader.readLine()) != null) {
-					sb.append(line + "\n");
-				}
-				is.close();
-				result = sb.toString();
-			} catch (Exception e) {
-				Log.e("log_tag","Erreur dans la conversion de result " + e.toString());
-			}
-			Log.i("BoatTracker", "5) result :" + result);
-
-			// Récupération des résultats de la requete
-			if (result.length() > 0) {
-				String[] tabReponse = result.split(";");
-				freq = tabReponse[0];
-				activationEmissionGPS = tabReponse[1];
-				activationEmissionSonore = tabReponse[2];
-			}
-		}
-	}
 }
