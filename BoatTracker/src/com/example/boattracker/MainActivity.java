@@ -117,7 +117,7 @@ public class MainActivity extends Activity implements LocationListener,
 		text.setKeyListener(null);
 		boutonDemarrerApp.setEnabled(false);
 		radio.setEnabled(false);
-		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence, 1, this);			
+		objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER, frequence, 0, this);			
 	}
 
 	/***********************************************************************************
@@ -186,7 +186,7 @@ public class MainActivity extends Activity implements LocationListener,
 	 * serveur
 	 */
 	private void changerFrequence() {
-		if (freq != "--") {
+		if (!freq.equals("--")) {
 			frequence = Integer.valueOf(freq);
 		}
 	}
@@ -215,7 +215,7 @@ public class MainActivity extends Activity implements LocationListener,
 			objgps.removeUpdates(this);
 		}
 		if (activationEmissionGPS.equals("1")) {
-			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 1, this);
+			objgps.requestLocationUpdates(LocationManager.GPS_PROVIDER,frequence, 0, this);
 		}
 	}
 	
